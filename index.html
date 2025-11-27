@@ -223,7 +223,7 @@
         }
 
         function spawnItem() {
-            const isBad = Math.random() < 0.75; // 25% tỉ lệ ra đồ xấu
+            const isBad = Math.random() < 0.50; // 25% tỉ lệ ra đồ xấu
             const content = isBad 
                 ? BAD_ITEMS[Math.floor(Math.random() * BAD_ITEMS.length)]
                 : GOOD_ITEMS[Math.floor(Math.random() * GOOD_ITEMS.length)];
