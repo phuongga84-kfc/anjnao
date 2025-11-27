@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Cùng nhau ăn cứt</title>
+    <title>Vì bạn ấy xứng đáng</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -62,8 +62,10 @@
 
     <canvas id="gameCanvas"></canvas>
     
-    <!-- Input ẩn để upload ảnh custom -->
+    <!-- Input ẩn để upload ảnh custom Character -->
     <input type="file" id="customCharInput" accept="image/png, image/jpeg" class="hidden">
+    <!-- Input ẩn để upload ảnh custom Background -->
+    <input type="file" id="customBgInput" accept="image/png, image/jpeg" class="hidden">
 
     <!-- Nút Pause -->
     <button id="pauseBtn" onclick="togglePause()" class="hidden absolute top-4 right-4 z-40 bg-white/90 text-gray-800 p-3 rounded-full shadow-lg border-2 border-gray-300 w-12 h-12 flex items-center justify-center hover:bg-gray-100 btn">
@@ -133,7 +135,7 @@
                 
                 <div class="bg-white p-3 rounded-lg shadow-sm border">
                     <p class="font-bold text-gray-700 mb-2">1. Cách chơi</p>
-                    <p class="text-sm text-gray-600">Ăn cứt để thắng.</p>
+                    <p class="text-sm text-gray-600">Di chuyển nhân vật để hứng đồ ăn tốt. Tránh né đồ ăn thiu và các vật phẩm nguy hiểm.</p>
                 </div>
 
                 <div class="bg-blue-50 p-3 rounded-lg shadow-sm border border-blue-200">
@@ -312,7 +314,9 @@
             background: [
                 { id: 'bg_default', name: 'Cho tôi cứt', price: 0, src: 'background/ab1.jpg' },
                 { id: 'bg_beach', name: 'Tớ xin lỗi', price: 30000, src: 'background/ab.jpg' },
-                { id: 'bg_space', name: 'Vũ Trụ', price: 100000, src: 'https://images.unsplash.com/photo-1534796636912-3b95b3ab5986?q=80&w=2072&auto=format&fit=crop' }
+                { id: 'bg_space', name: 'Vũ Trụ', price: 100000, src: 'https://images.unsplash.com/photo-1534796636912-3b95b3ab5986?q=80&w=2072&auto=format&fit=crop' },
+                // Mục Custom Background mới
+                { id: 'bg_custom', name: 'Tự chọn (Upload)', price: 40000, src: '', isCustom: true }
             ],
             items: [
                 { id: 'item_default', name: 'Mặc định', price: 0, goodImgs: ['item/bad/shit.png'], badImgs: ['item/good/rice.png','item/good/orange-juice.png','item/good/pizza.png'] },
@@ -332,14 +336,15 @@
             money: 100,
             owned: ['char_default', 'bg_default', 'item_default'],
             equippedChar: 'char_default', equippedBg: 'bg_default', equippedItem: 'item_default',
-            customCharData: null, // Lưu dữ liệu ảnh custom (base64)
+            customCharData: null, // Lưu dữ liệu ảnh custom character (base64)
+            customBgData: null, // Lưu dữ liệu ảnh custom background (base64)
             highScores: { easy: 0, medium: 0, hard: 0 }
         };
 
         const difficulties = {
             easy: { speedMin: 5, speedMax: 10, spawnRate: 60, penaltyMiss: 1, penaltyHit: 3, moneyGood: 20, moneyBad: 15 },
             medium: { speedMin: 10, speedMax: 15, spawnRate: 40, penaltyMiss: 3, penaltyHit: 5, moneyGood: 40, moneyBad: 25 },
-            hard: { speedMin: 16, speedMax: 22, spawnRate: 25, penaltyMiss: 5, penaltyHit: 10, moneyGood: 80, moneyBad: 60 }
+            hard: { speedMin: 15, speedMax: 20, spawnRate: 25, penaltyMiss: 5, penaltyHit: 10, moneyGood: 80, moneyBad: 60 }
         };
 
         let gameLoopId, timerInterval;
@@ -375,9 +380,16 @@
         function updateGlobalUI() { document.getElementById('totalMoneyDisplay').innerText = playerData.money; document.getElementById('shopMoneyDisplay').innerText = playerData.money; }
         
         function updateGraphics() {
+            // -- Background --
             const bgData = SHOPS.background.find(i => i.id === playerData.equippedBg) || SHOPS.background[0];
-            canvas.style.backgroundImage = `url('${bgData.src}')`;
             
+            if (bgData.isCustom && playerData.customBgData) {
+                canvas.style.backgroundImage = `url('${playerData.customBgData}')`;
+            } else {
+                canvas.style.backgroundImage = `url('${bgData.src}')`;
+            }
+
+            // -- Character --
             const charData = SHOPS.character.find(i => i.id === playerData.equippedChar) || SHOPS.character[0];
             
             if (charData.isCustom && playerData.customCharData) {
@@ -433,10 +445,17 @@
 
         // --- CUSTOM CHAR UPLOAD LOGIC ---
         document.getElementById('customCharInput').addEventListener('change', function(e) {
-            const file = e.target.files[0];
+            handleUpload(e.target.files[0], 'char');
+        });
+        
+        // --- CUSTOM BG UPLOAD LOGIC ---
+        document.getElementById('customBgInput').addEventListener('change', function(e) {
+            handleUpload(e.target.files[0], 'bg');
+        });
+
+        function handleUpload(file, type) {
             if (!file) return;
-            
-            // Giới hạn kích thước file (ví dụ 2MB) để tránh lag localStorage
+            // Giới hạn kích thước file (2MB)
             if (file.size > 2 * 1024 * 1024) {
                 alert("File ảnh quá lớn! Vui lòng chọn ảnh nhỏ hơn 2MB.");
                 return;
@@ -444,15 +463,20 @@
 
             const reader = new FileReader();
             reader.onload = function(event) {
-                playerData.customCharData = event.target.result;
-                playerData.equippedChar = 'char_custom'; // Tự động trang bị sau khi up
+                if (type === 'char') {
+                    playerData.customCharData = event.target.result;
+                    playerData.equippedChar = 'char_custom';
+                } else {
+                    playerData.customBgData = event.target.result;
+                    playerData.equippedBg = 'bg_custom';
+                }
                 saveData();
                 updateGraphics();
-                renderShopItems(); // Render lại để cập nhật nút
+                renderShopItems();
                 alert("Đã tải ảnh lên thành công!");
             };
             reader.readAsDataURL(file);
-        });
+        }
 
         // --- SHOP UI ---
         function switchShopTab(tab) {
@@ -476,22 +500,28 @@
                 
                 let imgPreview = item.src;
                 if (currentShopTab === 'items') imgPreview = item.goodImgs[0];
-                if (item.isCustom && playerData.customCharData) imgPreview = playerData.customCharData;
-                if (item.isCustom && !playerData.customCharData) imgPreview = "https://cdn-icons-png.flaticon.com/512/126/126477.png"; // Placeholder icon upload
+                
+                // Logic hiển thị preview cho Custom Items
+                if (item.isCustom) {
+                    if (currentShopTab === 'character' && playerData.customCharData) imgPreview = playerData.customCharData;
+                    else if (currentShopTab === 'background' && playerData.customBgData) imgPreview = playerData.customBgData;
+                    else imgPreview = "https://cdn-icons-png.flaticon.com/512/126/126477.png"; // Icon mặc định nếu chưa upload
+                }
 
                 let btnHtml = '';
                 
+                // Nút thao tác
                 if (isEquipped) {
                      btnHtml = `<button class="bg-gray-300 text-gray-600 font-bold py-1 px-3 rounded text-xs cursor-not-allowed">Đang dùng</button>`;
                      if (item.isCustom) {
-                         // Nút upload lại ảnh khi đang dùng
-                         btnHtml += `<button onclick="document.getElementById('customCharInput').click()" class="ml-1 bg-purple-500 hover:bg-purple-600 text-white font-bold py-1 px-3 rounded text-xs shadow"><i class="fas fa-upload"></i> Đổi ảnh</button>`;
+                         const inputId = currentShopTab === 'character' ? 'customCharInput' : 'customBgInput';
+                         btnHtml += `<button onclick="document.getElementById('${inputId}').click()" class="ml-1 bg-purple-500 hover:bg-purple-600 text-white font-bold py-1 px-3 rounded text-xs shadow"><i class="fas fa-upload"></i> Đổi ảnh</button>`;
                      }
                 } else if (isOwned) {
                     btnHtml = `<button onclick="AudioSys.play('click'); equipItem('${item.id}')" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-1 px-3 rounded text-xs shadow">Chọn</button>`;
                     if (item.isCustom) {
-                         // Nút upload ảnh
-                         btnHtml = `<button onclick="document.getElementById('customCharInput').click()" class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-1 px-3 rounded text-xs shadow"><i class="fas fa-upload"></i> Up ảnh</button> ` + btnHtml;
+                         const inputId = currentShopTab === 'character' ? 'customCharInput' : 'customBgInput';
+                         btnHtml = `<button onclick="document.getElementById('${inputId}').click()" class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-1 px-3 rounded text-xs shadow"><i class="fas fa-upload"></i> Up ảnh</button> ` + btnHtml;
                     }
                 } else {
                      btnHtml = `<button onclick="AudioSys.play('click'); buyItem('${item.id}', ${item.price})" class="${playerData.money >= item.price ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-400 cursor-not-allowed'} text-white font-bold py-1 px-3 rounded text-xs shadow">Mua $${item.price}</button>`;
