@@ -456,10 +456,10 @@
         function handleUpload(file, type) {
             if (!file) return;
             // Giới hạn kích thước file (2MB)
-            if (file.size > 2 * 1024 * 1024) {
-                alert("File ảnh quá lớn! Vui lòng chọn ảnh nhỏ hơn 2MB.");
-                return;
-            }
+            // if (file.size > 2 * 1024 * 1024) {
+            //     alert("File ảnh quá lớn! Vui lòng chọn ảnh nhỏ hơn 2MB.");
+            //     return;
+            // }
 
             const reader = new FileReader();
             reader.onload = function(event) {
