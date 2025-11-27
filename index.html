@@ -151,7 +151,7 @@
         const difficulties = {
             easy: { speedMin: 5, speedMax: 8, spawnRate: 60, penaltyMiss: 1, penaltyHit: 3 },
             medium: { speedMin: 9, speedMax: 12, spawnRate: 40, penaltyMiss: 3, penaltyHit: 5 },
-            hard: { speedMin: 18, speedMax: 22, spawnRate: 25, penaltyMiss: 8, penaltyHit: 10 }
+            hard: { speedMin: 18, speedMax: 22, spawnRate: 25, penaltyMiss: 5, penaltyHit: 10 }
         };
 
         // --- KHỞI TẠO & SỰ KIỆN ---
@@ -205,7 +205,7 @@
 
         function startGame(level) {
             currentDifficulty = difficulties[level];
-            score = 10; // Điểm khởi đầu (Máu)
+            score = 30; // Điểm khởi đầu (Máu)
             items = [];
             isGameOver = false;
             frames = 0;
@@ -277,7 +277,7 @@
                         shakeCanvas();
                     } else {
                         // Ăn được đồ tốt
-                        score += 1; // +1 điểm khi ăn được
+                        score += 3; // +1 điểm khi ăn được
                     }
                     items.splice(i, 1);
                     i--;
