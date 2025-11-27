@@ -3,496 +3,780 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Hôm nay ăn j</title>
-    <!-- Tailwind CSS để làm giao diện đẹp nhanh -->
+    <title>Hứng Đồ Ăn - Multi Items Update</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Font Awesome cho icon -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         body {
-            margin: 0;
-            overflow: hidden;
-            touch-action: none; /* Ngăn chặn cuộn trang trên mobile */
+            margin: 0; overflow: hidden; touch-action: none;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
+            background: #2d3748; user-select: none;
         }
         #gameCanvas {
-            display: block;
-            margin: 0 auto;
-            background-image: url('https://images.unsplash.com/photo-1554188248-986adbb73be4?q=80&w=2070&auto=format&fit=crop'); /* Hình nền game */
-            background-size: cover;
-            background-position: center;
-            box-shadow: 0 0 20px rgba(0,0,0,0.2);
+            display: block; margin: 0 auto;
+            background-size: cover; background-position: center;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            transition: background-image 0.5s ease;
         }
         .overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            background: rgba(0, 0, 0, 0.75);
-            backdrop-filter: blur(5px);
-            z-index: 10;
-            transition: opacity 0.3s;
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(5px);
+            z-index: 50; transition: opacity 0.2s;
         }
-        .hidden {
-            display: none !important;
+        .hidden { display: none !important; }
+        .btn { transition: all 0.1s; }
+        .btn:active { transform: scale(0.95); }
+        
+        /* Tab Shop */
+        .tab-btn { padding: 8px 12px; font-weight: bold; border-bottom: 3px solid transparent; opacity: 0.6; transition: 0.2s; }
+        .tab-btn.active { opacity: 1; border-bottom-color: #f97316; color: #f97316; }
+        .shop-item:hover { transform: translateY(-3px); }
+        .shop-item.equipped { border-color: #22c55e; background-color: #f0fdf4; }
+
+        /* Slider & Toggle Switch */
+        input[type=range] {
+            height: 6px; -webkit-appearance: none; background: #e2e8f0; border-radius: 5px; width: 100%;
         }
-        .btn {
-            transition: transform 0.1s;
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; height: 18px; width: 18px; border-radius: 50%; background: #3b82f6; cursor: pointer;
         }
-        .btn:active {
-            transform: scale(0.95);
+        /* Custom Toggle Switch CSS */
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #68D391;
         }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #68D391;
+        }
+        
+        /* Animation */
+        @keyframes bounceIn {
+            0% { transform: scale(0.8); opacity: 0; }
+            60% { transform: scale(1.05); opacity: 1; }
+            100% { transform: scale(1); }
+        }
+        .animate-bounce-in { animation: bounceIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
     </style>
 </head>
-<body class="bg-gray-100 h-screen w-screen flex justify-center items-center relative">
+<body class="bg-gray-800 h-screen w-screen flex justify-center items-center relative">
 
-    <!-- Canvas Game Layer -->
     <canvas id="gameCanvas"></canvas>
 
-    <!-- UI: HUD (Heads Up Display) - Chỉ hiện khi chơi -->
-    <div id="hud" class="absolute top-0 left-0 w-full p-4 flex justify-between items-start hidden pointer-events-none z-10">
-        <div class="bg-white/90 p-2 rounded-lg shadow-lg border-2 border-orange-400">
-            <p class="text-sm text-gray-600 font-bold">ĐIỂM SỐ</p>
-            <p id="scoreDisplay" class="text-3xl font-black text-orange-600">10</p>
+    <button id="pauseBtn" onclick="togglePause()" class="hidden absolute top-4 right-4 z-40 bg-white/90 text-gray-800 p-3 rounded-full shadow-lg border-2 border-gray-300 w-12 h-12 flex items-center justify-center hover:bg-gray-100 btn">
+        <i class="fas fa-pause text-xl"></i>
+    </button>
+
+    <div id="hud" class="absolute top-0 left-0 w-full p-2 flex justify-between items-start hidden pointer-events-none z-10 gap-2 pr-16">
+        <div class="bg-white/90 p-2 rounded-lg shadow border-b-4 border-orange-400 w-1/4 text-center">
+            <p class="text-[10px] text-gray-600 font-bold uppercase">Máu</p>
+            <p id="scoreDisplay" class="text-xl font-black text-orange-600">10</p>
         </div>
-        <div class="bg-white/90 p-2 rounded-lg shadow-lg border-2 border-blue-400 text-right">
-            <p class="text-sm text-gray-600 font-bold">KỶ LỤC</p>
-            <p id="highScoreDisplay" class="text-2xl font-black text-blue-600">0</p>
+        <div class="bg-white/90 p-2 rounded-lg shadow border-b-4 border-purple-400 w-1/4 text-center">
+            <p class="text-[10px] text-gray-600 font-bold uppercase">Thời gian</p>
+            <p id="timeDisplay" class="text-xl font-black text-purple-600">60</p>
+        </div>
+        <div class="bg-white/90 p-2 rounded-lg shadow border-b-4 border-blue-400 w-1/4 text-center">
+            <p class="text-[10px] text-gray-600 font-bold uppercase">Điểm</p>
+            <p id="pointsDisplay" class="text-xl font-black text-blue-600">0</p>
+        </div>
+        <div class="bg-white/90 p-2 rounded-lg shadow border-b-4 border-green-500 w-1/4 text-center">
+            <p class="text-[10px] text-gray-600 font-bold uppercase">Tiền</p>
+            <p id="sessionMoneyDisplay" class="text-xl font-black text-green-600">+$0</p>
         </div>
     </div>
 
-    <!-- UI: Menu Start -->
-    <div id="startMenu" class="overlay">
-        <div class="bg-white p-8 rounded-2xl shadow-2xl text-center max-w-sm w-[90%] animate-bounce-in">
-            <h1 class="text-4xl font-black text-orange-500 mb-2">CHO BẠN NGHĨA<br>ĂN CỨT</h1>
-            <p class="text-gray-500 mb-6 text-sm">Di chuyển để hứng cứt, né đồ ăn</p>
+    <div id="mainMenu" class="overlay">
+        <div class="bg-white p-8 rounded-2xl shadow-2xl text-center max-w-sm w-[90%] animate-bounce-in border-4 border-white/20 relative">
+            <h1 class="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-red-600 mb-2">SIÊU HỨNG ĐỒ<br/>(MULTI ITEM)</h1>
             
-            <p class="text-xs font-bold text-gray-400 mb-2 uppercase tracking-widest">Chọn độ khó</p>
-            
+            <div class="mb-6 bg-green-100 py-3 rounded-lg border border-green-300 shadow-inner">
+                <p class="text-xs text-green-600 font-bold uppercase">Tài khoản chính</p>
+                <p class="text-3xl font-black text-green-700">$<span id="totalMoneyDisplay">0</span></p>
+            </div>
+
             <div class="space-y-3 w-full">
-                <button onclick="startGame('easy')" class="btn w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-xl shadow-lg border-b-4 border-green-700">
-                    DỄ (Easy)
+                <button onclick="AudioSys.play('click'); showDifficultyMenu()" class="btn w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-xl shadow-lg border-b-4 border-blue-700 text-lg">
+                    <i class="fas fa-play mr-2"></i> CHƠI NGAY
                 </button>
-                <button onclick="startGame('medium')" class="btn w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 px-4 rounded-xl shadow-lg border-b-4 border-yellow-700">
-                    TRUNG BÌNH (Normal)
+                
+                <button onclick="AudioSys.play('click'); openShop()" class="btn w-full bg-purple-500 hover:bg-purple-600 text-white font-bold py-3 px-4 rounded-xl shadow-lg border-b-4 border-purple-700 text-lg">
+                    <i class="fas fa-store mr-2"></i> CỬA HÀNG
                 </button>
-                <button onclick="startGame('hard')" class="btn w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-4 rounded-xl shadow-lg border-b-4 border-red-700">
-                    KHÓ (Hard)
+
+                <button onclick="AudioSys.play('click'); openSettings('main')" class="btn w-full bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-xl shadow-lg border-b-4 border-gray-700 text-lg">
+                    <i class="fas fa-cog mr-2"></i> CÀI ĐẶT
                 </button>
-            </div>
-            
-            <div class="mt-6 text-xs text-gray-400">
-                <i class="fas fa-keyboard"></i> Phím mũi tên hoặc <i class="fas fa-hand-pointer"></i> Chạm để chơi
             </div>
         </div>
     </div>
 
-    <!-- UI: Game Over -->
-    <div id="gameOverMenu" class="overlay hidden">
-        <div class="bg-white p-8 rounded-2xl shadow-2xl text-center max-w-sm w-[90%]">
-            <h2 class="text-3xl font-black text-red-500 mb-2">GAME OVER!</h2>
-            <div class="my-4">
-                <p class="text-gray-500">Điểm của bạn</p>
-                <p id="finalScore" class="text-5xl font-black text-gray-800">0</p>
-            </div>
+    <div id="settingsMenu" class="overlay hidden z-[60]">
+        <div class="bg-white p-6 rounded-2xl shadow-2xl text-center max-w-xs w-[85%]">
+            <h2 class="text-2xl font-black text-gray-700 mb-6">CÀI ĐẶT</h2>
             
-            <div id="newRecordMsg" class="hidden mb-4 p-2 bg-yellow-100 text-yellow-700 rounded font-bold animate-pulse">
-                <i class="fas fa-trophy"></i> KỶ LỤC MỚI!
+            <div class="mb-6 space-y-5">
+                
+                <div class="flex items-center justify-between border-b pb-2">
+                    <div class="flex items-center text-gray-700 font-bold">
+                        <i class="fas fa-music w-6 text-center mr-2 text-blue-500"></i> Nhạc nền
+                    </div>
+                    <div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+                        <input type="checkbox" name="toggle" id="musicToggle" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer border-gray-300" checked onchange="toggleMusic()"/>
+                        <label for="musicToggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></label>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between border-b pb-2">
+                    <div class="flex items-center text-gray-700 font-bold">
+                        <i class="fas fa-volume-up w-6 text-center mr-2 text-green-500"></i> Hiệu ứng
+                    </div>
+                    <div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+                        <input type="checkbox" name="toggle" id="sfxToggle" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer border-gray-300" checked onchange="toggleSFX()"/>
+                        <label for="sfxToggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></label>
+                    </div>
+                </div>
+
+                <div class="text-left pt-2">
+                    <span class="text-sm font-bold text-gray-500 mb-2 block">Âm lượng tổng</span>
+                    <div class="flex items-center gap-2">
+                        <i class="fas fa-volume-down text-gray-400"></i>
+                        <input type="range" id="volumeSlider" min="0" max="1" step="0.1" value="0.5" oninput="changeVolume(this.value)">
+                        <i class="fas fa-volume-up text-gray-400"></i>
+                    </div>
+                </div>
             </div>
 
-            <button onclick="resetMenu()" class="btn w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-xl shadow-lg border-b-4 border-blue-700">
-                <i class="fas fa-redo"></i> CHƠI LẠI
+            <button onclick="AudioSys.play('click'); closeSettings()" class="btn w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-3 rounded-xl shadow">
+                XONG
             </button>
         </div>
     </div>
 
+    <div id="pauseMenu" class="overlay hidden">
+        <div class="bg-white p-6 rounded-2xl shadow-2xl text-center max-w-sm w-[90%] relative">
+            <h2 class="text-3xl font-black text-gray-800 mb-4">TẠM DỪNG</h2>
+            <div class="flex justify-center gap-4 mb-6">
+                <div class="bg-blue-50 p-2 rounded w-1/2 border border-blue-200">
+                    <p class="text-[10px] text-gray-500 uppercase">Điểm hiện tại</p>
+                    <p id="pauseScore" class="text-2xl font-black text-blue-600">0</p>
+                </div>
+                <div class="bg-green-50 p-2 rounded w-1/2 border border-green-200">
+                    <p class="text-[10px] text-gray-500 uppercase">Tiền hiện tại</p>
+                    <p id="pauseMoney" class="text-2xl font-black text-green-600">+0$</p>
+                </div>
+            </div>
+            
+            <div class="space-y-3">
+                <button onclick="AudioSys.play('click'); togglePause()" class="btn w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 rounded-xl shadow-lg border-b-4 border-blue-700">
+                    <i class="fas fa-play mr-2"></i> TIẾP TỤC
+                </button>
+                <button onclick="AudioSys.play('click'); openSettings('pause')" class="btn w-full bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 rounded-xl shadow-lg border-b-4 border-gray-700">
+                    <i class="fas fa-cog mr-2"></i> CÀI ĐẶT
+                </button>
+                <button onclick="AudioSys.play('click'); confirmQuit()" class="btn w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-xl shadow-lg border-b-4 border-red-700">
+                    <i class="fas fa-sign-out-alt mr-2"></i> THOÁT GAME
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="confirmQuitMenu" class="overlay hidden z-[70]">
+        <div class="bg-white p-6 rounded-2xl shadow-2xl text-center max-w-xs w-[85%]">
+            <div class="text-red-500 text-4xl mb-2"><i class="fas fa-exclamation-circle"></i></div>
+            <h2 class="text-xl font-black text-gray-800 mb-2">BẠN CHẮC CHỨ?</h2>
+            <p class="text-gray-500 text-sm mb-6">Mọi điểm số và tiền trong màn chơi này sẽ bị mất!</p>
+            <div class="flex gap-3">
+                <button onclick="AudioSys.play('click'); cancelQuit()" class="btn flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 rounded-xl">KHÔNG</button>
+                <button onclick="AudioSys.play('click'); quitGame()" class="btn flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-2 rounded-xl shadow border-b-4 border-red-700">THOÁT</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="difficultyMenu" class="overlay hidden">
+        <div class="bg-white p-6 rounded-2xl shadow-2xl text-center max-w-sm w-[90%]">
+            <h2 class="text-2xl font-black text-gray-700 mb-4">CHỌN ĐỘ KHÓ</h2>
+            <div class="space-y-3 w-full mb-4">
+                <button onclick="AudioSys.play('click'); startGame('easy')" class="btn w-full bg-green-50 text-green-800 font-bold py-3 rounded-xl border-2 border-green-500 hover:bg-green-100 text-left px-4 relative">
+                    <span class="block text-lg">DỄ (Easy)</span><span class="text-xs text-green-600">+10$ / -7$</span>
+                    <span class="absolute right-4 top-3 bg-green-200 px-2 rounded text-xs">Top: <span id="recordEasy">0</span></span>
+                </button>
+                <button onclick="AudioSys.play('click'); startGame('medium')" class="btn w-full bg-yellow-50 text-yellow-800 font-bold py-3 rounded-xl border-2 border-yellow-500 hover:bg-yellow-100 text-left px-4 relative">
+                    <span class="block text-lg">TRUNG BÌNH</span><span class="text-xs text-yellow-600">+20$ / -15$</span>
+                    <span class="absolute right-4 top-3 bg-yellow-200 px-2 rounded text-xs">Top: <span id="recordMedium">0</span></span>
+                </button>
+                <button onclick="AudioSys.play('click'); startGame('hard')" class="btn w-full bg-red-50 text-red-800 font-bold py-3 rounded-xl border-2 border-red-500 hover:bg-red-100 text-left px-4 relative">
+                    <span class="block text-lg">KHÓ (Hard)</span><span class="text-xs text-red-600">+50$ / -40$</span>
+                    <span class="absolute right-4 top-3 bg-red-200 px-2 rounded text-xs">Top: <span id="recordHard">0</span></span>
+                </button>
+            </div>
+            <button onclick="AudioSys.play('click'); backToMain()" class="text-gray-400 font-bold text-sm hover:text-gray-600"><i class="fas fa-arrow-left"></i> QUAY LẠI</button>
+        </div>
+    </div>
+
+    <div id="shopMenu" class="overlay hidden">
+        <div class="bg-white rounded-2xl shadow-2xl text-center max-w-md w-[95%] h-[85%] flex flex-col overflow-hidden">
+            <div class="p-4 border-b bg-gray-50 flex justify-between items-center">
+                <h2 class="text-xl font-black text-gray-800">CỬA HÀNG</h2>
+                <div class="bg-green-100 px-3 py-1 rounded-full text-green-700 font-bold border border-green-300">$<span id="shopMoneyDisplay">0</span></div>
+            </div>
+            <div class="flex justify-around bg-white border-b">
+                <button onclick="AudioSys.play('click'); switchShopTab('character')" id="tab-character" class="tab-btn active w-1/3">NHÂN VẬT</button>
+                <button onclick="AudioSys.play('click'); switchShopTab('background')" id="tab-background" class="tab-btn w-1/3">NỀN</button>
+                <button onclick="AudioSys.play('click'); switchShopTab('items')" id="tab-items" class="tab-btn w-1/3">VẬT PHẨM</button>
+            </div>
+            <div id="shopList" class="flex-1 overflow-y-auto space-y-2 p-3 bg-gray-50"></div>
+            <div class="p-3 border-t bg-white">
+                <button onclick="AudioSys.play('click'); backToMain()" class="btn w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-3 rounded-xl"><i class="fas fa-check"></i> XONG</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="gameOverMenu" class="overlay hidden">
+        <div class="bg-white p-8 rounded-2xl shadow-2xl text-center max-w-sm w-[90%] animate-bounce-in">
+            <h2 id="endReason" class="text-lg font-bold text-gray-500">GAME OVER!</h2>
+            <div class="flex justify-center items-end gap-2 mb-4">
+                <div class="text-center"><p class="text-xs text-gray-400 uppercase">Điểm số</p><p id="finalScore" class="text-4xl font-black text-blue-600">0</p></div>
+            </div>
+            <div class="bg-gray-100 p-4 rounded-xl mb-4 border-2 border-gray-200">
+                <p class="text-xs text-gray-500 uppercase font-bold mb-1">Tổng kết tiền</p>
+                <div class="flex justify-between items-center text-sm mb-2"><span>Kiếm được:</span><span id="finalMoneyEarned" class="font-bold text-green-600">+0$</span></div>
+                <div class="border-t border-gray-300 my-2"></div>
+                <div class="flex justify-between items-center"><span class="font-bold text-gray-700">Số dư mới:</span><span id="finalTotalMoney" class="font-black text-green-700 text-xl">0$</span></div>
+            </div>
+            <button onclick="AudioSys.play('click'); backToMain()" class="btn w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-xl shadow-lg border-b-4 border-blue-700 mb-2"><i class="fas fa-home"></i> MENU CHÍNH</button>
+             <button onclick="AudioSys.play('click'); replayGame()" class="btn w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-3 px-4 rounded-xl"><i class="fas fa-redo"></i> CHƠI LẠI</button>
+        </div>
+    </div>
+
     <script>
-        // --- CẤU HÌNH TRÒ CHƠI ---
+        // --- 1. HỆ THỐNG ÂM THANH SYNTH ---
+        const AudioSys = {
+            ctx: null,
+            musicOn: true,
+            sfxOn: true,
+            volume: 0.5,
+            
+            init: function() {
+                window.AudioContext = window.AudioContext || window.webkitAudioContext;
+                this.ctx = new AudioContext();
+            },
+            
+            play: function(type) {
+                if (!this.sfxOn && type !== 'bgm') return;
+                if (!this.ctx) this.init();
+                if (this.ctx.state === 'suspended') this.ctx.resume();
+
+                const t = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                const vol = this.volume;
+
+                if (type === 'click') {
+                    osc.frequency.setValueAtTime(800, t);
+                    osc.frequency.exponentialRampToValueAtTime(300, t + 0.1);
+                    gain.gain.setValueAtTime(0.1 * vol, t);
+                    gain.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
+                    osc.start(t); osc.stop(t + 0.1);
+                } 
+                else if (type === 'eat') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(600, t);
+                    osc.frequency.linearRampToValueAtTime(1200, t + 0.1);
+                    gain.gain.setValueAtTime(0.1 * vol, t);
+                    gain.gain.linearRampToValueAtTime(0.01, t + 0.2);
+                    osc.start(t); osc.stop(t + 0.2);
+                }
+                else if (type === 'hit') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(100, t);
+                    osc.frequency.linearRampToValueAtTime(50, t + 0.3);
+                    gain.gain.setValueAtTime(0.2 * vol, t);
+                    gain.gain.linearRampToValueAtTime(0.01, t + 0.3);
+                    osc.start(t); osc.stop(t + 0.3);
+                }
+                else if (type === 'gameover') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(300, t);
+                    osc.frequency.linearRampToValueAtTime(100, t + 1);
+                    gain.gain.setValueAtTime(0.2 * vol, t);
+                    gain.gain.linearRampToValueAtTime(0.01, t + 1);
+                    osc.start(t); osc.stop(t + 1);
+                }
+            }
+        };
+
+        // --- 2. CẤU HÌNH GAME & SHOP (ĐÃ UPDATE MULTI ITEMS) ---
+        // Lưu ý: Tôi đã đổi 'goodImg' -> 'goodImgs' (mảng []) để chứa nhiều ảnh
+        const SHOPS = {
+            character: [
+                { id: 'char_default', name: 'Cho tôi cứt', price: 0, src: 'player/b.png' },
+                { id: 'char_head', name: 'Nhét cứt đầu tôi', price: 20000, src: 'player/a.png' }
+            ],
+            background: [
+                { id: 'bg_default', name: 'Cho tôi cứt', price: 0, src: 'background/ab1.jpg' },
+                { id: 'bg_beach', name: 'Tớ xin lỗi', price: 30000, src: 'background/ab.jpg' },
+                { id: 'bg_space', name: 'Vũ Trụ', price: 100000, src: 'https://images.unsplash.com/photo-1534796636912-3b95b3ab5986?q=80&w=2072&auto=format&fit=crop' }
+            ],
+            items: [
+                { 
+                    id: 'item_default', 
+                    name: 'Mặc định', 
+                    price: 0, 
+                    goodImgs: [
+                        'item/bad/shit.png'
+                    ], 
+                    badImgs: [
+                        'item/good/rice.png',
+                        'item/good/orange-juice.png',
+                        'item/good/pizza.png'
+                    ] 
+                },
+                { 
+                    id: 'item_stone', 
+                    name: 'Đá', 
+                    price: 10000, 
+                    goodImgs: [
+                        'item/bad/stone.png'
+                    ], 
+                    badImgs: [
+                        'item/good/apple.png',
+                        'item/good/banana.png',
+                        'item/good/orange.png'
+                    ] 
+                },
+                { 
+                    id: 'item_gold', 
+                    name: 'Cứt vàng', 
+                    price: 30000, 
+                    goodImgs: [
+                        'item/bad/gold_shit.png'
+                    ], 
+                    badImgs: [
+                        'item/good/apple.png',
+                        'item/good/orange-juice.png',
+                        'item/good/crab.png'
+                    ] 
+                },
+                { 
+                    id: 'item_diamond', 
+                    name: 'Cứt kim cương', 
+                    price: 100000, 
+                    goodImgs: [
+                        'item/bad/diamond_shit.png'
+                    ], 
+                    badImgs: [
+                        'item/good/rice.png',
+                        'item/good/shrimp.png',
+                        'item/good/orange-juice.png'
+                    ] 
+                }
+            ]
+        };
+
+        const DEFAULT_EMOJI_GOOD = "🍔";
+        const DEFAULT_EMOJI_BAD = "💣";
+
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         
-        // 1. TẢI ẢNH NHÂN VẬT (BẠN SẼ SỬA Ở ĐÂY)
-        const playerImg = new Image();
-        // Link ảnh mặc định (con mèo trong giỏ). 
-        // Thay link bên dưới bằng link ảnh của bạn. Nên dùng ảnh PNG nền trong suốt.
-        playerImg.src = 'a.png'; 
-        
-        // Các tài nguyên khác (Sử dụng Emoji vẽ lên canvas để không cần tải nhiều ảnh)
-        const GOOD_ITEMS = ['💩']; // Đồ ăn
-        const BAD_ITEMS = ['🍚', '🍕', '🍗']; // Vật phẩm xấu
-
-        // --- BIẾN TRẠNG THÁI ---
-        let gameLoopId;
-        let score = 10;
-        let highScore = localStorage.getItem('catchGameHighScore') || 0;
-        let isGameOver = false;
-        let frames = 0;
-        
-        // Kích thước người chơi
-        const player = {
-            x: 0,
-            y: 0,
-            width: 80,
-            height: 80,
-            speed: 15, // Tốc độ di chuyển bàn phím
-            dx: 0
+        let playerData = {
+            money: 100,
+            owned: ['char_default', 'bg_default', 'item_default'],
+            equippedChar: 'char_default', equippedBg: 'bg_default', equippedItem: 'item_default',
+            highScores: { easy: 0, medium: 0, hard: 0 }
         };
 
-        let items = []; // Mảng chứa các vật phẩm đang rơi
-
-        // Cấu hình độ khó
-        let currentDifficulty = {};
         const difficulties = {
-            easy: { speedMin: 5, speedMax: 8, spawnRate: 60, penaltyMiss: 1, penaltyHit: 3 },
-            medium: { speedMin: 9, speedMax: 12, spawnRate: 40, penaltyMiss: 3, penaltyHit: 5 },
-            hard: { speedMin: 18, speedMax: 22, spawnRate: 25, penaltyMiss: 5, penaltyHit: 10 }
+            easy: { speedMin: 10, speedMax: 15, spawnRate: 60, penaltyMiss: 1, penaltyHit: 3, moneyGood: 10, moneyBad: 7 },
+            medium: { speedMin: 15, speedMax: 20, spawnRate: 40, penaltyMiss: 3, penaltyHit: 5, moneyGood: 20, moneyBad: 15 },
+            hard: { speedMin: 20, speedMax: 25, spawnRate: 25, penaltyMiss: 5, penaltyHit: 10, moneyGood: 50, moneyBad: 40 }
         };
 
-        // --- KHỞI TẠO & SỰ KIỆN ---
-        function resizeCanvas() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-            player.y = canvas.height - player.height - 20; // Đặt nhân vật ở đáy
-        }
-        window.addEventListener('resize', () => {
-            resizeCanvas();
-            // Giữ nhân vật trong màn hình khi resize
-            if(player.x > canvas.width - player.width) player.x = canvas.width - player.width;
-        });
+        let gameLoopId, timerInterval;
+        let score = 0, points = 0, sessionMoney = 0, timeLeft = 60;
+        let isGameOver = false, isPaused = false;
+        let frames = 0;
+        let currentLevel = 'easy';
+        let items = [];
+        let currentShopTab = 'character';
 
-        // Điều khiển: Bàn phím
+        let imgChar = new Image();
+        // Thay vì 1 ảnh duy nhất, giờ ta load vào mảng
+        let goodImages = []; 
+        let badImages = [];
+        
+        let loadedAssets = { char: false, good: false, bad: false };
+        const player = { x: 0, y: 0, width: 80, height: 80, speed: 15, dx: 0 };
+
+        // --- 3. HỆ THỐNG MENU & LOGIC ---
+
+        function loadData() {
+            const saved = localStorage.getItem('catchGameData_v3');
+            if (saved) playerData = { ...playerData, ...JSON.parse(saved) };
+            updateGlobalUI();
+        }
+        function saveData() {
+            localStorage.setItem('catchGameData_v3', JSON.stringify(playerData));
+            updateGlobalUI();
+        }
+        function updateGlobalUI() {
+            document.getElementById('totalMoneyDisplay').innerText = playerData.money;
+            document.getElementById('shopMoneyDisplay').innerText = playerData.money;
+        }
+        
+        function updateGraphics() {
+            // Background
+            const bgData = SHOPS.background.find(i => i.id === playerData.equippedBg) || SHOPS.background[0];
+            canvas.style.backgroundImage = `url('${bgData.src}')`;
+            
+            // Character
+            const charData = SHOPS.character.find(i => i.id === playerData.equippedChar) || SHOPS.character[0];
+            imgChar.src = charData.src; 
+            imgChar.onload = () => loadedAssets.char = true;
+            imgChar.onerror = () => loadedAssets.char = false;
+
+            // Items (Multi Loading Logic)
+            const itemData = SHOPS.items.find(i => i.id === playerData.equippedItem) || SHOPS.items[0];
+            
+            // Reset mảng ảnh
+            goodImages = [];
+            badImages = [];
+
+            // Load tất cả ảnh tốt
+            if(itemData.goodImgs && Array.isArray(itemData.goodImgs)){
+                itemData.goodImgs.forEach(src => {
+                    const img = new Image();
+                    img.src = src;
+                    // Không cần chờ onload từng cái, draw sẽ check img.complete
+                    goodImages.push(img);
+                });
+            }
+
+            // Load tất cả ảnh xấu
+            if(itemData.badImgs && Array.isArray(itemData.badImgs)){
+                itemData.badImgs.forEach(src => {
+                    const img = new Image();
+                    img.src = src;
+                    badImages.push(img);
+                });
+            }
+        }
+
+        // Settings Logic
+        function openSettings(source) { document.getElementById('settingsMenu').classList.remove('hidden'); }
+        function closeSettings() { document.getElementById('settingsMenu').classList.add('hidden'); }
+        function toggleMusic() { AudioSys.musicOn = !AudioSys.musicOn; }
+        function toggleSFX() { AudioSys.sfxOn = !AudioSys.sfxOn; }
+        function changeVolume(val) { AudioSys.volume = val; }
+
+        // Pause Logic
+        function togglePause() {
+            if (isGameOver) return;
+            isPaused = !isPaused;
+
+            if (isPaused) {
+                cancelAnimationFrame(gameLoopId);
+                clearInterval(timerInterval);
+                document.getElementById('pauseScore').innerText = points;
+                document.getElementById('pauseMoney').innerText = (sessionMoney >= 0 ? "+" : "") + sessionMoney + "$";
+                document.getElementById('pauseMenu').classList.remove('hidden');
+            } else {
+                document.getElementById('pauseMenu').classList.add('hidden');
+                document.getElementById('confirmQuitMenu').classList.add('hidden');
+                gameLoop();
+                startTimer();
+            }
+        }
+
+        function confirmQuit() { document.getElementById('confirmQuitMenu').classList.remove('hidden'); }
+        function cancelQuit() { document.getElementById('confirmQuitMenu').classList.add('hidden'); }
+        function quitGame() {
+            isPaused = false;
+            document.getElementById('pauseMenu').classList.add('hidden');
+            document.getElementById('confirmQuitMenu').classList.add('hidden');
+            document.getElementById('hud').classList.add('hidden');
+            document.getElementById('pauseBtn').classList.add('hidden');
+            document.getElementById('mainMenu').classList.remove('hidden');
+            init();
+        }
+
+        // Shop UI Logic
+        function switchShopTab(tab) {
+            currentShopTab = tab;
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(`tab-${tab}`).classList.add('active');
+            renderShopItems();
+        }
+        function renderShopItems() {
+            const list = document.getElementById('shopList');
+            list.innerHTML = '';
+            const data = SHOPS[currentShopTab];
+            data.forEach(item => {
+                const isOwned = playerData.owned.includes(item.id);
+                let isEquipped = false;
+                if(currentShopTab === 'character') isEquipped = playerData.equippedChar === item.id;
+                if(currentShopTab === 'background') isEquipped = playerData.equippedBg === item.id;
+                if(currentShopTab === 'items') isEquipped = playerData.equippedItem === item.id;
+
+                const div = document.createElement('div');
+                div.className = `shop-item bg-white border-2 rounded-xl p-3 flex items-center justify-between shadow-sm ${isEquipped ? 'equipped' : 'border-gray-200'}`;
+                
+                let imgPreview = item.src;
+                // Nếu là item, lấy ảnh đầu tiên trong mảng goodImgs làm preview
+                if (currentShopTab === 'items') imgPreview = item.goodImgs[0]; 
+
+                let btnHtml = '';
+                if (isEquipped) btnHtml = `<button class="bg-gray-300 text-gray-600 font-bold py-1 px-3 rounded text-xs cursor-not-allowed">Đang dùng</button>`;
+                else if (isOwned) btnHtml = `<button onclick="AudioSys.play('click'); equipItem('${item.id}')" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-1 px-3 rounded text-xs shadow">Chọn</button>`;
+                else {
+                    const canBuy = playerData.money >= item.price;
+                    const action = canBuy ? `onclick="AudioSys.play('click'); buyItem('${item.id}', ${item.price})"` : '';
+                    const color = canBuy ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-400 cursor-not-allowed';
+                    btnHtml = `<button ${action} class="${color} text-white font-bold py-1 px-3 rounded text-xs shadow">Mua $${item.price}</button>`;
+                }
+                div.innerHTML = `<div class="flex items-center gap-3"><div class="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden border"><img src="${imgPreview}" class="w-full h-full object-contain" onerror="this.src='https://via.placeholder.com/50'"></div><div class="text-left"><p class="font-bold text-gray-700 text-sm">${item.name}</p><p class="text-[10px] text-gray-400">${isOwned ? 'Đã sở hữu' : 'Giá: $' + item.price}</p></div></div><div>${btnHtml}</div>`;
+                list.appendChild(div);
+            });
+        }
+        function buyItem(id, price) {
+            if (playerData.money >= price) { playerData.money -= price; playerData.owned.push(id); saveData(); renderShopItems(); }
+        }
+        function equipItem(id) {
+            if(currentShopTab === 'character') playerData.equippedChar = id;
+            if(currentShopTab === 'background') playerData.equippedBg = id;
+            if(currentShopTab === 'items') playerData.equippedItem = id;
+            saveData(); updateGraphics(); renderShopItems();
+        }
+        function openShop() {
+            document.getElementById('mainMenu').classList.add('hidden');
+            document.getElementById('shopMenu').classList.remove('hidden');
+            switchShopTab('character');
+        }
+
+        // --- 4. GAMEPLAY ---
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+            player.y = canvas.height - player.height - 20;
+        }
+        window.addEventListener('resize', () => { resizeCanvas(); if(player.x > canvas.width - player.width) player.x = canvas.width - player.width; });
+
         document.addEventListener('keydown', (e) => {
             if (e.key === 'ArrowLeft') player.dx = -player.speed;
             if (e.key === 'ArrowRight') player.dx = player.speed;
+            if (e.key === 'Escape') togglePause();
         });
-        document.addEventListener('keyup', (e) => {
-            if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') player.dx = 0;
-        });
-
-        // Điều khiển: Cảm ứng / Chuột (Di chuyển theo vị trí tay)
-        function handleTouchMove(clientX) {
-            if (isGameOver) return;
+        document.addEventListener('keyup', (e) => { if(['ArrowLeft','ArrowRight'].includes(e.key)) player.dx = 0; });
+        
+        function handleInput(clientX) {
+            if (isGameOver || isPaused) return;
             const rect = canvas.getBoundingClientRect();
-            let relativeX = clientX - rect.left;
-            
-            // Căn giữa ngón tay vào giữa nhân vật
-            player.x = relativeX - player.width / 2;
-            
-            // Giới hạn biên
+            let rx = clientX - rect.left;
+            player.x = rx - player.width/2;
             if (player.x < 0) player.x = 0;
             if (player.x + player.width > canvas.width) player.x = canvas.width - player.width;
         }
-
-        canvas.addEventListener('mousemove', (e) => handleTouchMove(e.clientX));
-        canvas.addEventListener('touchmove', (e) => {
-            e.preventDefault(); // Ngăn cuộn
-            handleTouchMove(e.touches[0].clientX);
-        }, { passive: false });
-
-        // --- LOGIC GAME ---
+        canvas.addEventListener('mousemove', e => handleInput(e.clientX));
+        canvas.addEventListener('touchmove', e => { e.preventDefault(); handleInput(e.touches[0].clientX); }, { passive: false });
 
         function init() {
-            resizeCanvas();
-            document.getElementById('highScoreDisplay').innerText = highScore;
-            player.x = canvas.width / 2 - player.width / 2;
+            resizeCanvas(); loadData(); updateGraphics();
+            player.x = canvas.width/2 - player.width/2;
+            document.getElementById('recordEasy').innerText = playerData.highScores.easy;
+            document.getElementById('recordMedium').innerText = playerData.highScores.medium;
+            document.getElementById('recordHard').innerText = playerData.highScores.hard;
         }
 
         function startGame(level) {
-            currentDifficulty = difficulties[level];
-            score = 30; // Điểm khởi đầu (Máu)
-            items = [];
-            isGameOver = false;
-            frames = 0;
-
-            document.getElementById('startMenu').classList.add('hidden');
-            document.getElementById('gameOverMenu').classList.add('hidden');
-            document.getElementById('hud').classList.remove('hidden');
-            document.getElementById('newRecordMsg').classList.add('hidden');
-
-            updateScoreUI();
+            // Cần user interaction để AudioContext hoạt động trên browser
+            AudioSys.init();
             
-            // Bắt đầu vòng lặp
+            currentLevel = level;
+            score = 30; points = 0; sessionMoney = 0; timeLeft = 60;
+            items = []; isGameOver = false; isPaused = false; frames = 0;
+
+            document.getElementById('difficultyMenu').classList.add('hidden');
+            document.getElementById('gameOverMenu').classList.add('hidden');
+            document.getElementById('pauseMenu').classList.add('hidden');
+            document.getElementById('hud').classList.remove('hidden');
+            document.getElementById('pauseBtn').classList.remove('hidden');
+
+            updateHUD();
+            
             if (gameLoopId) cancelAnimationFrame(gameLoopId);
             gameLoop();
+            startTimer();
+        }
+
+        function startTimer() {
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                if (isGameOver || isPaused) return;
+                timeLeft--;
+                updateTimerHUD();
+                if (timeLeft <= 0) endGame("HẾT GIỜ!");
+            }, 1000);
         }
 
         function spawnItem() {
-            const isBad = Math.random() < 0.50; // 25% tỉ lệ ra đồ xấu
-            const content = isBad 
-                ? BAD_ITEMS[Math.floor(Math.random() * BAD_ITEMS.length)]
-                : GOOD_ITEMS[Math.floor(Math.random() * GOOD_ITEMS.length)];
-            
-            const size = 50;
+            const diff = difficulties[currentLevel];
+            const isBad = Math.random() < 0.50; // 50% tỉ lệ ra đồ xấu
+            const size = 50; 
             const x = Math.random() * (canvas.width - size);
             
-            items.push({
-                x: x,
-                y: -size, // Bắt đầu từ trên đỉnh màn hình
-                size: size,
-                content: content,
-                isBad: isBad,
-                speed: Math.random() * (currentDifficulty.speedMax - currentDifficulty.speedMin) + currentDifficulty.speedMin
+            // Random chọn 1 ảnh trong bộ sưu tập đang equip
+            let imgIndex = 0;
+            let targetArray = isBad ? badImages : goodImages;
+            
+            if (targetArray.length > 0) {
+                imgIndex = Math.floor(Math.random() * targetArray.length);
+            }
+
+            items.push({ 
+                x: x, 
+                y: -size, 
+                size: size, 
+                isBad: isBad, 
+                imgIndex: imgIndex, // Lưu lại index ảnh để vẽ đúng cái đó
+                speed: Math.random() * (diff.speedMax - diff.speedMin) + diff.speedMin 
             });
         }
 
         function update() {
             frames++;
-
-            // 1. Di chuyển nhân vật (nếu dùng phím)
             if (player.dx !== 0) {
                 player.x += player.dx;
-                // Giới hạn biên
                 if (player.x < 0) player.x = 0;
                 if (player.x + player.width > canvas.width) player.x = canvas.width - player.width;
             }
+            if (frames % difficulties[currentLevel].spawnRate === 0) spawnItem();
 
-            // 2. Sinh đồ vật
-            if (frames % currentDifficulty.spawnRate === 0) {
-                spawnItem();
-            }
-
-            // 3. Cập nhật đồ vật
+            const diff = difficulties[currentLevel];
             for (let i = 0; i < items.length; i++) {
-                let item = items[i];
-                item.y += item.speed;
-
-                // KIỂM TRA VA CHẠM (Collision Detection)
-                if (
-                    item.x < player.x + player.width &&
-                    item.x + item.size > player.x &&
-                    item.y < player.y + player.height &&
-                    item.y + item.size > player.y
-                ) {
-                    // Trúng nhân vật
+                let item = items[i]; item.y += item.speed;
+                if (item.x < player.x + player.width && item.x + item.size > player.x && item.y < player.y + player.height && item.y + item.size > player.y) {
                     if (item.isBad) {
-                        // Ăn phải đồ xấu
-                        score -= currentDifficulty.penaltyHit;
-                        playSound('hit'); // Hiệu ứng hình ảnh rung (giả lập)
-                        shakeCanvas();
+                        score -= diff.penaltyHit; sessionMoney -= diff.moneyBad;
+                        AudioSys.play('hit'); shakeCanvas();
                     } else {
-                        // Ăn được đồ tốt
-                        score += 3; // +1 điểm khi ăn được
+                        score += 1; points += 10; sessionMoney += diff.moneyGood;
+                        AudioSys.play('eat');
                     }
-                    items.splice(i, 1);
-                    i--;
-                    updateScoreUI();
-                    continue;
+                    items.splice(i, 1); i--; updateHUD(); continue;
                 }
-
-                // Kiểm tra rơi ra ngoài
                 if (item.y > canvas.height) {
-                    if (!item.isBad) {
-                        // Bỏ lỡ đồ tốt thì bị trừ điểm
-                        score -= currentDifficulty.penaltyMiss;
-                        updateScoreUI();
-                    }
-                    items.splice(i, 1);
-                    i--;
+                    if (!item.isBad) { score -= diff.penaltyMiss; updateHUD(); }
+                    items.splice(i, 1); i--;
                 }
             }
-
-            // Kiểm tra thua cuộc
-            if (score <= 0) {
-                endGame();
-            }
+            if (score <= 0) endGame("HẾT MÁU!");
         }
 
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            // Vẽ nhân vật
-            if (playerImg.complete) {
-                ctx.drawImage(playerImg, player.x, player.y, player.width, player.height);
-            } else {
-                // Fallback nếu ảnh chưa tải xong
-                ctx.fillStyle = 'blue';
-                ctx.fillRect(player.x, player.y, player.width, player.height);
-            }
-
-            // Vẽ đồ vật rơi
-            ctx.font = "40px Arial";
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
             
+            // Draw Player
+            if (loadedAssets.char) ctx.drawImage(imgChar, player.x, player.y, player.width, player.height);
+            else { ctx.fillStyle = 'blue'; ctx.fillRect(player.x, player.y, player.width, player.height); }
+
+            // Draw Items
             items.forEach(item => {
-                // Đã xóa nền trắng mờ để icon rõ hơn
+                let imgToDraw = null;
                 
-                // Vẽ Emoji trực tiếp
-                // Thêm bóng đổ nhẹ để emoji tách biệt khỏi nền
-                ctx.shadowColor = "rgba(0,0,0,0.3)";
-                ctx.shadowBlur = 4;
-                ctx.fillText(item.content, item.x + item.size/2, item.y + item.size/2 + 5);
+                // Lấy ảnh từ mảng dựa trên index đã random lúc spawn
+                if (item.isBad) {
+                    if (badImages.length > 0) imgToDraw = badImages[item.imgIndex % badImages.length];
+                } else {
+                    if (goodImages.length > 0) imgToDraw = goodImages[item.imgIndex % goodImages.length];
+                }
                 
-                // Reset shadow để không ảnh hưởng các element khác nếu có
-                ctx.shadowBlur = 0;
+                if (imgToDraw && imgToDraw.complete) {
+                    // Vẽ bóng
+                    ctx.beginPath();
+                    ctx.arc(item.x + item.size/2, item.y + item.size/2, item.size/2, 0, Math.PI*2);
+                    ctx.fillStyle = "rgba(255,255,255,0.4)";
+                    ctx.fill();
+
+                    ctx.shadowColor = "rgba(0,0,0,0.3)"; ctx.shadowBlur = 4;
+                    ctx.drawImage(imgToDraw, item.x, item.y, item.size, item.size); 
+                    ctx.shadowBlur = 0;
+                } else {
+                    // Fallback Text
+                    ctx.font = "40px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+                    const txt = item.isBad ? DEFAULT_EMOJI_BAD : DEFAULT_EMOJI_GOOD;
+                    ctx.fillText(txt, item.x + item.size/2, item.y + item.size/2);
+                }
             });
         }
 
         function gameLoop() {
-            if (isGameOver) return;
-            update();
-            draw();
+            if (isGameOver || isPaused) return;
+            update(); draw();
             gameLoopId = requestAnimationFrame(gameLoop);
         }
 
-        function updateScoreUI() {
-            document.getElementById('scoreDisplay').innerText = score;
-            // Đổi màu điểm nếu sắp thua
+        function updateHUD() {
             const scoreEl = document.getElementById('scoreDisplay');
-            if(score <= 3) scoreEl.className = "text-3xl font-black text-red-600 animate-pulse";
-            else scoreEl.className = "text-3xl font-black text-orange-600";
+            scoreEl.innerText = score;
+            scoreEl.className = score <= 5 ? "text-xl font-black text-red-600 animate-pulse" : "text-xl font-black text-orange-600";
+            document.getElementById('pointsDisplay').innerText = points;
+            const mEl = document.getElementById('sessionMoneyDisplay');
+            mEl.innerText = (sessionMoney >= 0 ? "+" : "") + sessionMoney + "$";
+            mEl.className = sessionMoney < 0 ? "text-xl font-black text-red-500" : "text-xl font-black text-green-600";
+        }
+        function updateTimerHUD() {
+            const tEl = document.getElementById('timeDisplay'); tEl.innerText = timeLeft;
+            tEl.className = timeLeft <= 10 ? "text-xl font-black text-red-600 animate-ping" : "text-xl font-black text-purple-600";
         }
 
-        function endGame() {
+        function endGame(reason) {
+            if (isGameOver) return;
             isGameOver = true;
-            cancelAnimationFrame(gameLoopId);
-            
-            // Kiểm tra kỷ lục
-            let isNewRecord = false;
-            if (score > highScore) { // Lưu ý: Logic game này là giữ điểm > 0, nhưng thường "High Score" là điểm tích lũy được. 
-                // Ở đây ta có thể tính điểm Highscore là số điểm cao nhất từng đạt được TRONG LÚC CHƠI, 
-                // hoặc là số điểm còn lại cuối cùng.
-                // Để hay hơn, tôi sẽ đổi logic một chút: Highscore ở đây là max score player đạt được trong phiên chơi đó.
-                // Nhưng theo code hiện tại, score có thể tăng giảm. Ta sẽ lưu HighScore theo Score hiện tại nếu nó lớn hơn kỷ lục cũ.
-            }
-            
-            // Để đơn giản theo yêu cầu: Game Over.
-            // Check nếu số điểm hiện tại (trước khi chết, thường là 0) -> thực ra catch game tính điểm tích lũy sẽ hay hơn. 
-            // Nhưng theo luật "bị trừ điểm khi còn 0 thì thua", nghĩa là mục tiêu là SỐNG SÓT lâu nhất và kiếm nhiều điểm nhất.
-            
-            // Logic Highscore thực tế cho dạng game sinh tồn điểm số:
-            // Tôi sẽ lưu High Score là số điểm cao nhất người chơi chạm tới được trong lượt chơi đó.
-            // (Hiện tại code đang dùng biến score trực tiếp, ta sẽ so sánh score max)
-            
-            // Tuy nhiên, để đơn giản cho code này: ta sẽ so sánh điểm hiện tại (dù nó là 0 khi thua, nhưng có thể người chơi muốn xem mình "tích" được bao nhiêu).
-            // Có lẽ ta nên có 1 biến `maxScoreSession`.
-            // Nhưng để tuân thủ đúng yêu cầu đơn giản: Tôi sẽ hiển thị điểm cuối cùng (0) - Nghe hơi vô lý.
-            // SỬA ĐỔI: Tôi sẽ thêm biến `accumulatedScore` (điểm tích lũy) để làm High Score, còn `score` hiện tại là "Máu".
-            
-            // Vì yêu cầu là "bị trừ điểm khi điểm còn 0 thì game over", nghĩa là Score đóng vai trò là HP.
-            // Để làm hài lòng người chơi, tôi sẽ coi số đồ ăn bắt được là Kỷ lục.
-            
-            // Tạm thời: Lưu Highscore theo logic "Số đồ ăn đã bắt được" (tôi sẽ thêm biến này).
-        }
-        
-        // Sửa lại logic điểm một chút để hợp lý hơn:
-        // score: Máu (HP)
-        // points: Điểm tích lũy (để tính High Score)
-        let points = 0;
+            cancelAnimationFrame(gameLoopId); clearInterval(timerInterval);
+            AudioSys.play('gameover');
 
-        // Ghi đè hàm startGame để reset points
-        const originalStartGame = startGame;
-        startGame = function(level) {
-            points = 0;
-            originalStartGame(level);
-        }
+            let finalBalance = playerData.money + sessionMoney;
+            if (finalBalance < 0) finalBalance = 0;
+            playerData.money = finalBalance;
+            if (points > playerData.highScores[currentLevel]) playerData.highScores[currentLevel] = points;
+            saveData();
 
-        // Ghi đè hàm update để tính points
-        const originalUpdate = update;
-        update = function() {
-             frames++;
-             if (player.dx !== 0) {
-                player.x += player.dx;
-                if (player.x < 0) player.x = 0;
-                if (player.x + player.width > canvas.width) player.x = canvas.width - player.width;
-            }
-
-            if (frames % currentDifficulty.spawnRate === 0) spawnItem();
-
-            for (let i = 0; i < items.length; i++) {
-                let item = items[i];
-                item.y += item.speed;
-
-                // Va chạm
-                if (
-                    item.x < player.x + player.width &&
-                    item.x + item.size > player.x &&
-                    item.y < player.y + player.height &&
-                    item.y + item.size > player.y
-                ) {
-                    if (item.isBad) {
-                        score -= currentDifficulty.penaltyHit; // Trừ máu
-                        shakeCanvas();
-                    } else {
-                        score += 1; // Hồi máu
-                        points += 10; // TĂNG ĐIỂM TÍCH LŨY
-                    }
-                    items.splice(i, 1);
-                    i--;
-                    updateScoreUI();
-                    continue;
-                }
-                
-                // Rớt ra ngoài
-                if (item.y > canvas.height) {
-                    if (!item.isBad) {
-                        score -= currentDifficulty.penaltyMiss; // Trừ máu nếu rớt đồ ăn
-                        updateScoreUI();
-                    }
-                    items.splice(i, 1);
-                    i--;
-                }
-            }
-            
-            // Cập nhật hiển thị điểm tích lũy thay vì máu lên HUD Highscore area
-            // Nhưng ở HUD tôi đang để Score là "Máu". 
-            // Hãy hiển thị: Score (Máu) và Points (Điểm thật)
-            
-            if (score <= 0) {
-                isGameOver = true;
-                cancelAnimationFrame(gameLoopId);
-                showGameOver();
-            }
-        }
-        
-        // Hàm cập nhật UI điểm
-        function updateScoreUI() {
-            document.getElementById('scoreDisplay').innerText = score; // Hiển thị máu
-            // Hiển thị điểm tích lũy ở góc phải thay vì High Score tĩnh
-            // document.getElementById('highScoreDisplay').innerText = points; 
-        }
-
-        function showGameOver() {
             document.getElementById('hud').classList.add('hidden');
+            document.getElementById('pauseBtn').classList.add('hidden');
             document.getElementById('gameOverMenu').classList.remove('hidden');
-            document.getElementById('finalScore').innerText = points; // Hiển thị điểm tích lũy
             
-            if (points > highScore) {
-                highScore = points;
-                localStorage.setItem('catchGameHighScore', highScore);
-                document.getElementById('newRecordMsg').classList.remove('hidden');
-                document.getElementById('highScoreDisplay').innerText = highScore;
-            }
+            document.getElementById('endReason').innerText = reason;
+            document.getElementById('finalScore').innerText = points;
+            const earnEl = document.getElementById('finalMoneyEarned');
+            earnEl.innerText = (sessionMoney >= 0 ? "+" : "") + sessionMoney + "$";
+            earnEl.className = sessionMoney < 0 ? "font-bold text-red-500" : "font-bold text-green-600";
+            document.getElementById('finalTotalMoney').innerText = playerData.money + "$";
         }
 
-        function resetMenu() {
+        function backToMain() {
+            document.getElementById('difficultyMenu').classList.add('hidden');
+            document.getElementById('shopMenu').classList.add('hidden');
             document.getElementById('gameOverMenu').classList.add('hidden');
-            document.getElementById('startMenu').classList.remove('hidden');
-            document.getElementById('highScoreDisplay').innerText = highScore;
+            document.getElementById('hud').classList.add('hidden');
+            document.getElementById('pauseBtn').classList.add('hidden');
+            document.getElementById('mainMenu').classList.remove('hidden');
+            init();
         }
-
+        function showDifficultyMenu() {
+            document.getElementById('mainMenu').classList.add('hidden');
+            document.getElementById('difficultyMenu').classList.remove('hidden');
+            init();
+        }
+        function replayGame() { startGame(currentLevel); }
         function shakeCanvas() {
             canvas.style.transform = 'translate(5px, 5px)';
-            setTimeout(() => {
-                canvas.style.transform = 'translate(-5px, -5px)';
-                setTimeout(() => canvas.style.transform = 'translate(0, 0)', 50);
-            }, 50);
-        }
-        
-        // Hàm hỗ trợ phát âm thanh (placeholder để tránh lỗi nếu chưa có)
-        function playSound(type) {
-            // Có thể thêm âm thanh sau này
+            setTimeout(() => { canvas.style.transform = 'translate(-5px, -5px)'; setTimeout(() => canvas.style.transform = 'translate(0, 0)', 50); }, 50);
         }
 
-        // Khởi chạy
         init();
-
     </script>
 </body>
 </html>
