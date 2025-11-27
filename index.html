@@ -124,7 +124,7 @@
         playerImg.src = 'a.png'; 
         
         // Các tài nguyên khác (Sử dụng Emoji vẽ lên canvas để không cần tải nhiều ảnh)
-        const GOOD_ITEMS = ['💩', '💩']; // Đồ ăn
+        const GOOD_ITEMS = ['💩']; // Đồ ăn
         const BAD_ITEMS = ['🍚', '🍕', '🍗']; // Vật phẩm xấu
 
         // --- BIẾN TRẠNG THÁI ---
@@ -150,8 +150,8 @@
         let currentDifficulty = {};
         const difficulties = {
             easy: { speedMin: 5, speedMax: 8, spawnRate: 60, penaltyMiss: 1, penaltyHit: 3 },
-            medium: { speedMin: 7, speedMax: 10, spawnRate: 40, penaltyMiss: 3, penaltyHit: 5 },
-            hard: { speedMin: 12, speedMax: 17, spawnRate: 25, penaltyMiss: 3, penaltyHit: 10 }
+            medium: { speedMin: 9, speedMax: 12, spawnRate: 40, penaltyMiss: 3, penaltyHit: 5 },
+            hard: { speedMin: 14, speedMax: 18, spawnRate: 25, penaltyMiss: 3, penaltyHit: 10 }
         };
 
         // --- KHỞI TẠO & SỰ KIỆN ---
@@ -223,7 +223,7 @@
         }
 
         function spawnItem() {
-            const isBad = Math.random() < 0.50; // 25% tỉ lệ ra đồ xấu
+            const isBad = Math.random() < 0.75; // 25% tỉ lệ ra đồ xấu
             const content = isBad 
                 ? BAD_ITEMS[Math.floor(Math.random() * BAD_ITEMS.length)]
                 : GOOD_ITEMS[Math.floor(Math.random() * GOOD_ITEMS.length)];
