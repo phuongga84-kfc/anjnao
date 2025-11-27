@@ -151,7 +151,7 @@
         const difficulties = {
             easy: { speedMin: 5, speedMax: 8, spawnRate: 60, penaltyMiss: 1, penaltyHit: 3 },
             medium: { speedMin: 7, speedMax: 10, spawnRate: 40, penaltyMiss: 3, penaltyHit: 5 },
-            hard: { speedMin: 10, speedMax: 15, spawnRate: 25, penaltyMiss: 3, penaltyHit: 10 }
+            hard: { speedMin: 12, speedMax: 17, spawnRate: 25, penaltyMiss: 3, penaltyHit: 10 }
         };
 
         // --- KHỞI TẠO & SỰ KIỆN ---
@@ -223,7 +223,7 @@
         }
 
         function spawnItem() {
-            const isBad = Math.random() < 0.35; // 25% tỉ lệ ra đồ xấu
+            const isBad = Math.random() < 0.50; // 25% tỉ lệ ra đồ xấu
             const content = isBad 
                 ? BAD_ITEMS[Math.floor(Math.random() * BAD_ITEMS.length)]
                 : GOOD_ITEMS[Math.floor(Math.random() * GOOD_ITEMS.length)];
